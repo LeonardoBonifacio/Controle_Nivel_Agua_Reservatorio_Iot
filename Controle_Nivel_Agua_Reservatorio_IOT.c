@@ -17,8 +17,8 @@
 #define BOTAO_JOY 22
 #define POTENCIOMETRO_BOIA 28
 
-#define WIFI_SSID "Leonardo"
-#define WIFI_PASS "00695470PI"
+#define WIFI_SSID ""
+#define WIFI_PASS ""
 
 #define I2C_PORT_DISP i2c1
 #define I2C_SDA_DISP 14
@@ -201,7 +201,7 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
                         (int)strlen(txt), txt);
     }
     else if (strstr(req, "GET /estado")){  // Se a requisição for para obter o estado dos sensores/LED
-        adc_select_input(2); // <--- MUDE AQUI! Seleciona o canal ADC 2 para o potenciômetro da boia
+        adc_select_input(2); // Seleciona o canal ADC 2 para o potenciômetro da boia
         uint16_t valor_potenciometro_lido = adc_read(); // Armazena o valor do potenciômetro
 
         // Converte para porcentagem
