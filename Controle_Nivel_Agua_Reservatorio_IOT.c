@@ -78,7 +78,7 @@ int aciona_bomba_com_base_no_nivel_agua(int nivel_agua){
 const char HTML_BODY[] =
     "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Controle do LED</title>"
     "<style>"
-    "body { font-family: sans-serif; text-align: center; padding: 10px; margin: 0; background:rgb(0, 0, 0); }"
+    "body { font-family: sans-serif; text-align: center; padding: 10px; margin: 0; background:rgb(0, 0, 0); color: white}"
     ".botao { font-size: 20px; padding: 10px 30px; margin: 10px; border: none; border-radius: 8px; }"
     ".on { background: #4CAF50; color: white; }"
     ".off { background: #f44336; color: white; }"
@@ -91,19 +91,15 @@ const char HTML_BODY[] =
     "@media (max-width: 600px) { .botao { width: 80%; font-size: 18px; } }"
     "</style>"
     "<script>"
-    "function sendCommand(cmd) { fetch('/led/' + cmd); }"
+    "function sendCommand(cmd) { fetch('/'+cmd); }"
     "function atualizar() {"
     "  fetch('/estado').then(res => res.json()).then(data => {"
-    "    document.getElementById('estado').innerText = data.bomba_rele ? 'Ligado' : 'Desligado';"
+    "    document.getElementById('estado').innerText = data.bomba_agua ? 'Ligado' : 'Desligado';"
     "    document.getElementById('valor_potenciometro').innerText = data.nivel_agua;"
-    "    document.getElementById('botao').innerText = data.botao ? 'Pressionado' : 'Solto';"
-    "    document.getElementById('joy').innerText = data.joy ? 'Pressionado' : 'Solto';"
-    "    document.getElementById('bolinha_a').style.background = data.botao ? '#2126F3' : '#ccc';"
-    "    document.getElementById('bolinha_joy').style.background = data.joy ? '#4C7F50' : '#ccc';"
     "    document.getElementById('barra_x').style.width = data.nivel_agua + '%';"
     "  });"
     "}"
-    "setInterval(atualizar, 500);"
+    "setInterval(atualizar, 100);"
     "</script></head><body>"
 
     "<h1>Controle do Nivel de água no Reservatório</h1>"
@@ -113,12 +109,8 @@ const char HTML_BODY[] =
     "<p class='label'>Nivel de água: <span id='valor_potenciometro'>--</span>%</p>"
     "<div class='barra'><div id='barra_x' class='preenchimento'></div></div>"
 
-
-    "<p class='label'>Botão A: <span id='botao'>--</span> <span id='bolinha_a' class='bolinha'></span></p>"
-    "<p class='label'>Botão do Joystick: <span id='joy'>--</span> <span id='bolinha_joy' class='bolinha'></span></p>"
-
-    "<button class='botao on' onclick=\"sendCommand('on')\">Aumentar nível</button>"
-    "<button class='botao off' onclick=\"sendCommand('off')\">Diminuir nível</button>"
+    "<button class='botao on' onclick=\"sendCommand('bomba/on')\">Ligar bomba</button>"
+    "<button class='botao off' onclick=\"sendCommand('bomba/off')\">Desligar Bomba</button>"
 
     "</body></html>";
 
@@ -183,49 +175,44 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
     }
     hs->sent = 0; // Inicializa o contador de bytes enviados para esta requisição
 
-    // Lógica para lidar com as diferentes URLs/requisições
-    // if (strstr(req, "GET /led/on")){ // Se a requisição for para ligar o LED
-    //     gpio_put(LED_PIN, 1); // Liga o led
-    //     const char *txt = "Ligado";
-    //     hs->len = snprintf(hs->response, sizeof(hs->response),
-    //                        // Cabeçalhos HTTP para resposta de texto puro
-    //                        "HTTP/1.1 200 OK\r\n"
-    //                        "Content-Type: text/plain\r\n"
-    //                        "Content-Length: %d\r\n"
-    //                        "Connection: close\r\n"
-    //                        "\r\n"
-    //                        "%s",
-    //                        (int)strlen(txt), txt); // Formata a resposta com o texto "Ligado"
-    // }
-    // else if (strstr(req, "GET /led/off")){ // Se a requisição for para desligar o LED
-    //     gpio_put(LED_PIN, 0); // Desliga o led
-    //     const char *txt = "Desligado";
-    //     hs->len = snprintf(hs->response, sizeof(hs->response),
-    //                        // Cabeçalhos HTTP para resposta de texto puro
-    //                        "HTTP/1.1 200 OK\r\n"
-    //                        "Content-Type: text/plain\r\n"
-    //                        "Content-Length: %d\r\n"
-    //                        "Connection: close\r\n"
-    //                        "\r\n"
-    //                        "%s",
-    //                        (int)strlen(txt), txt); // Formata a resposta com o texto "Desligado"
-    // }
-    if (strstr(req, "GET /estado")){  // Se a requisição for para obter o estado dos sensores/LED
+    // Crie novas seções no http_recv
+    if (strstr(req, "GET /bomba/on")){
+        gpio_put(RELE_PIN, 0); // Ativa o relé (LOW liga a bomba)
+        const char *txt = "Bomba Ligada";
+        hs->len = snprintf(hs->response, sizeof(hs->response),
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: %d\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "%s",
+                        (int)strlen(txt), txt);
+    }
+    else if (strstr(req, "GET /bomba/off")){
+        gpio_put(RELE_PIN, 1); // Desativa o relé (HIGH desliga a bomba)
+        const char *txt = "Bomba Desligada";
+        hs->len = snprintf(hs->response, sizeof(hs->response),
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: %d\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "%s",
+                        (int)strlen(txt), txt);
+    }
+    else if (strstr(req, "GET /estado")){  // Se a requisição for para obter o estado dos sensores/LED
         adc_select_input(2); // <--- MUDE AQUI! Seleciona o canal ADC 2 para o potenciômetro da boia
         uint16_t valor_potenciometro_lido = adc_read(); // Armazena o valor do potenciômetro
 
         // Converte para porcentagem
         int nivel_porcentagem = map_to_percentage(valor_potenciometro_lido);
-
-        int botao = !gpio_get(BOTAO_A); // Lê o estado do Botão A (negado, pois pull-up)
-        int joy = !gpio_get(BOTAO_JOY); // Lê o estado do Botão do Joystick (negado, pois pull-up)
-
+        int estado_bomba_para_json = !gpio_get(RELE_PIN);
         char json_payload[96]; // Buffer para a string JSON
         // Envia o valor_bruto_potenciometro como 'x' E o nivel_porcentagem como um novo campo 'nivel_agua'
         // Ou, para simplificar e aproveitar o que já está na página, você pode enviar direto o nível_porcentagem em 'x'
         int json_len = snprintf(json_payload, sizeof(json_payload),
-                                 "{\"led\":%d,\"botao\":%d,\"joy\":%d,\"nivel_agua\":%d}\r\n",
-                                 !gpio_get(RELE_PIN), botao, joy, nivel_porcentagem); // Enviando como 'nivel_agua'
+                                 "{\"bomba_agua\":%d,\"nivel_agua\":%d}\r\n",
+                                 estado_bomba_para_json, nivel_porcentagem); // Enviando como 'nivel_agua'
 
         printf("[DEBUG] JSON: %s\n", json_payload); // Imprime o JSON no console para depuração
 
@@ -402,7 +389,8 @@ int main()
         ssd1306_rect(&ssd, 52, 114, 8, 8, cor, !cor);                // Desenha um retângulo
         ssd1306_send_data(&ssd);                                     // Atualiza o display
         aciona_bomba_com_base_no_nivel_agua(nivel_porcentagem_display);
-        sleep_ms(200);
+        printf("%d", gpio_get(RELE_PIN));
+        sleep_ms(300);
     }
 
     cyw43_arch_deinit();
